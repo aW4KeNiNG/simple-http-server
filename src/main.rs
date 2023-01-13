@@ -495,6 +495,12 @@ impl Handler for MainHandler {
             .collect::<Result<Vec<PathBuf>, _>>()?
             .into_iter()
             .collect::<PathBuf>();
+        if path_prefix.to_str().unwrap() == "ping" {
+            return Ok(Response::with((
+                status::Ok,
+                "pong"),
+            ));
+        }
         fs_path.push(&path_prefix);
         let fs_path = fs_path.parse_dot().unwrap();
 
