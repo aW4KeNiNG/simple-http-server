@@ -32,6 +32,7 @@ OPTIONS:
                 Example: -c=js,d.ts
                 Note: disabled on partial request!
         --ip <ip>                                  IP address to bind [default: 0.0.0.0]
+    -k, --timeout-keep-alive                       Timeout to keep the server alive while there are no requests [default: 0 (always) ]
     -p, --port <port>                              Port number [default: 8000]
         --redirect <redirect>                      takes a URL to redirect to using HTTP 301 Moved Permanently
     -t, --threads <threads>                        How many worker threads [default: 3]

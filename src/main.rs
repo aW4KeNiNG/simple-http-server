@@ -4,12 +4,15 @@ mod util;
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::env;
+use std::{env, thread};
 use std::fs;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::net::IpAddr;
+use std::ops::{Div, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use clap::crate_version;
 use htmlescape::encode_minimal;
@@ -67,6 +70,18 @@ fn main() {
              .short("i")
              .long("index")
              .help("Enable automatic render index page [index.html, index.htm]"))
+        .arg(clap::Arg::with_name("timeout_keep_alive")
+            .short("k")
+            .long("timeout-keep-alive")
+            .takes_value(true)
+            .default_value("0")
+            .validator(|s| {
+                match s.parse::<u16>() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string())
+                }
+            })
+            .help("Timeout to keep the server alive while there are no requests"))
         .arg(clap::Arg::with_name("upload")
              .short("u")
              .long("upload")
@@ -231,6 +246,7 @@ fn main() {
     let coep = matches.is_present("coep");
     let ip = matches.value_of("ip").unwrap();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
+    let timeout_keep_alive = Duration::from_secs(matches.value_of("timeout_keep_alive").unwrap().parse::<u64>().unwrap());
     let upload_size_limit = matches
         .value_of("upload_size_limit")
         .unwrap()
@@ -334,6 +350,7 @@ fn main() {
             .unwrap();
     }
 
+    let last_request_time = Arc::new(Mutex::new(Instant::now()));
     let mut chain = Chain::new(MainHandler {
         root,
         index,
@@ -349,6 +366,7 @@ fn main() {
             .map(|exts| exts.iter().map(|s| format!(".{}", s)).collect()),
         try_file_404: try_file_404.map(PathBuf::from),
         upload_size_limit,
+        last_request_time: last_request_time.clone(),
     });
     if cors {
         chain.link_around(CorsMiddleware::with_allow_any());
@@ -372,6 +390,20 @@ fn main() {
     if !silent {
         chain.link_after(RequestLogger {
             printer: Printer::new(),
+        });
+    }
+    if !timeout_keep_alive.is_zero() {
+        thread::spawn(move || {
+            loop {
+                thread::sleep(timeout_keep_alive.div(4));
+
+                let mut last_request_time_changer = last_request_time.lock().unwrap();
+                let now = Instant::now();
+                if now - *last_request_time_changer > timeout_keep_alive {
+                    std::process::exit(0);
+                }
+                std::mem::drop(last_request_time_changer);
+            }
         });
     }
     let mut server = Iron::new(chain);
@@ -429,10 +461,14 @@ struct MainHandler {
     compress: Option<Vec<String>>,
     try_file_404: Option<PathBuf>,
     upload_size_limit: u64,
+    last_request_time: Arc<Mutex<Instant>>,
 }
 
 impl Handler for MainHandler {
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
+        let mut last_request_time_changer = self.last_request_time.lock().unwrap();
+        *last_request_time_changer = Instant::now();
+        std::mem::drop(last_request_time_changer);
         let mut fs_path = self.root.clone();
         if let Some(url) = &self.redirect_to {
             return Ok(Response::with((
