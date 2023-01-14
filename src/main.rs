@@ -31,7 +31,7 @@ use percent_encoding::percent_decode;
 use pretty_bytes::converter::convert;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use termcolor::{Color, ColorSpec};
+use termcolor::{Color, ColorChoice, ColorSpec};
 
 use color::{build_spec, Printer};
 use util::{
@@ -96,6 +96,9 @@ fn main() {
         .arg(clap::Arg::with_name("nocache")
              .long("nocache")
              .help("Disable http cache"))
+        .arg(clap::Arg::with_name("nocolor")
+             .long("nocolor")
+             .help("Disable output color"))
         .arg(clap::Arg::with_name("norange")
              .long("norange")
              .help("Disable header::Range support (partial request)"))
@@ -238,6 +241,7 @@ fn main() {
         .map(Result::unwrap);
     let sort = !matches.is_present("nosort");
     let cache = !matches.is_present("nocache");
+    let output_color_choice = if matches.is_present("nocolor") { ColorChoice::Never } else { ColorChoice::Always };
     let range = !matches.is_present("norange");
     let cert = matches.value_of("cert");
     let certpass = matches.value_of("certpass");
@@ -257,7 +261,7 @@ fn main() {
     let threads = matches.value_of("threads").unwrap().parse::<u8>().unwrap();
     let try_file_404 = matches.value_of("try-file-404");
 
-    let printer = Printer::new();
+    let printer = Printer::new(output_color_choice);
     let color_blue = Some(build_spec(Some(Color::Blue), false));
     let color_red = Some(build_spec(Some(Color::Red), false));
     let addr = format!("{}:{}", ip, port);
@@ -389,7 +393,7 @@ fn main() {
     }
     if !silent {
         chain.link_after(RequestLogger {
-            printer: Printer::new(),
+            printer: Printer::new(output_color_choice),
         });
     }
     if !timeout_keep_alive.is_zero() {

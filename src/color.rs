@@ -18,10 +18,10 @@ pub fn build_spec(fg: Option<Color>, bold: bool) -> ColorSpec {
 }
 
 impl Printer {
-    pub fn new() -> Printer {
+    pub fn new(color_choice:ColorChoice) -> Printer {
         Printer {
-            outwriter: BufferWriter::stdout(ColorChoice::Always),
-            errwriter: BufferWriter::stderr(ColorChoice::Always),
+            outwriter: BufferWriter::stdout(color_choice),
+            errwriter: BufferWriter::stderr(color_choice),
         }
     }
 

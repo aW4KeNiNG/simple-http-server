@@ -17,6 +17,7 @@ FLAGS:
     -h, --help       Prints help information
     -i, --index      Enable automatic render index page [index.html, index.htm]
         --nocache    Disable http cache
+        --nocolor    Disable output color
         --norange    Disable header::Range support (partial request)
         --nosort     Disable directory entries sort (by: name, modified, size)
     -s, --silent     Disable all outputs
