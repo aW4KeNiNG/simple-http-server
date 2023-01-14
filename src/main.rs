@@ -8,7 +8,7 @@ use std::{env, thread};
 use std::fs;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::net::IpAddr;
-use std::ops::{Div, Sub};
+use std::ops::Div;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -397,7 +397,7 @@ fn main() {
             loop {
                 thread::sleep(timeout_keep_alive.div(4));
 
-                let mut last_request_time_changer = last_request_time.lock().unwrap();
+                let last_request_time_changer = last_request_time.lock().unwrap();
                 let now = Instant::now();
                 if now - *last_request_time_changer > timeout_keep_alive {
                     std::process::exit(0);
